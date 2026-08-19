@@ -6,7 +6,13 @@ import unittest
 from pathlib import Path
 
 
-SCRIPT_PATH = Path(__file__).parents[1] / "scripts" / "inspect_environment.py"
+SCRIPT_PATH = (
+    Path(__file__).parents[1]
+    / "skills"
+    / "wot-mod-development"
+    / "scripts"
+    / "inspect_environment.py"
+)
 SPEC = importlib.util.spec_from_file_location("inspect_environment", SCRIPT_PATH)
 MODULE = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None

@@ -1,6 +1,8 @@
 ---
 name: wot-mod-development
 description: Разрабатывать, адаптировать, диагностировать и собирать клиентские Python-моды для World of Tanks и «Мир танков», включая Scaleform/AS3, Gameface и перенос на новые патчи. Использовать для новых и существующих проектов; не использовать для World of Tanks Blitz или советов по игре.
+metadata:
+  author: wotstat
 ---
 
 # Разработка модов World of Tanks и «Мир танков»
