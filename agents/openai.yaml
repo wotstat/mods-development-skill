@@ -1,0 +1,4 @@
+interface:
+  display_name: "WoT Mod Development"
+  short_description: "Разработка модов WoT и «Мир танков»"
+  default_prompt: "Используй $wot-mod-development, чтобы проверить окружение и безопасно реализовать или обновить мой мод."
