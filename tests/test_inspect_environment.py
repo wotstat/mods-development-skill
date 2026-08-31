@@ -44,6 +44,45 @@ class InspectEnvironmentTests(unittest.TestCase):
         gf.parent.mkdir(parents=True)
         gf.write_text("<div></div>\n", encoding="utf-8")
 
+        vscode = project / ".vscode"
+        vscode.mkdir()
+        (vscode / "settings.json").write_text(
+            """{
+  // JSONC is valid in VS Code configuration files.
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/res/scripts/client",
+    "${workspaceFolder}/wot-src/sources/res/scripts/client",
+    "${workspaceFolder}/wot-src/sources/res/scripts/common",
+    "${workspaceFolder}/wot-src/sources/res/scripts/client_common",
+    "${workspaceFolder}/wot-src/stubs",
+  ],
+  "python.autoComplete.extraPaths": [
+    "${workspaceFolder}/res/scripts/client",
+    "${workspaceFolder}/wot-src/sources/res/scripts/client",
+    "${workspaceFolder}/wot-src/sources/res/scripts/common",
+    "${workspaceFolder}/wot-src/sources/res/scripts/client_common",
+    "${workspaceFolder}/wot-src/stubs",
+  ],
+  "python.analysis.indexing": true,
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.userFileIndexingLimit": 20000,
+}
+""",
+            encoding="utf-8",
+        )
+        (vscode / "extensions.json").write_text(
+            json.dumps(
+                {
+                    "recommendations": [
+                        "ms-python.python",
+                        "ms-python.vscode-pylance",
+                    ]
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
         for relative in MODULE.SOURCE_ROOTS:
             (source / relative).mkdir(parents=True, exist_ok=True)
         for relative in ("sources-as3", "sources-gameface", "stubs"):
@@ -61,6 +100,7 @@ class InspectEnvironmentTests(unittest.TestCase):
                     "version_name": "1.44.0.7794",
                     "commit_subject": "v.1.44.0.0 #2254",
                     "snapshot_created_at": "2026-08-01T00:00:00Z",
+                    "counts": {"sources": 17017},
                 }
             )
             + "\n",
@@ -79,6 +119,68 @@ class InspectEnvironmentTests(unittest.TestCase):
             encoding="utf-8",
         )
         return project, source, game
+
+    def _add_as3_project(self, project):
+        as3 = project / "as3"
+        main_class = as3 / "src/example/Main.as"
+        main_class.parent.mkdir(parents=True)
+        main_class.write_text(
+            "package example { public class Main {} }\n",
+            encoding="utf-8",
+        )
+        libs = as3 / "libs"
+        libs.mkdir()
+        (libs / "game.swc").write_bytes(b"test")
+        (libs / "playerglobal.swc").write_bytes(b"test")
+        (as3 / "asconfig.json").write_text(
+            json.dumps(
+                {
+                    "config": "royale",
+                    "compilerOptions": {
+                        "targets": ["SWF"],
+                        "target-player": "17.0",
+                        "swf-version": 17,
+                        "source-path": ["src"],
+                        "external-library-path": [
+                            "libs/game.swc",
+                            "libs/playerglobal.swc",
+                        ],
+                        "output": "bin/example.swf",
+                    },
+                    "mainClass": "example.Main",
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        (as3 / "build-config.xml").write_text(
+            """<config>
+  <compilerOptions>
+    <targets><target>SWF</target></targets>
+    <target-player>17.0</target-player>
+    <swf-version>17</swf-version>
+    <output>bin/example.swf</output>
+  </compilerOptions>
+  <mainClass>example.Main</mainClass>
+</config>
+""",
+            encoding="utf-8",
+        )
+        extensions = project / ".vscode/extensions.json"
+        extensions.write_text(
+            json.dumps(
+                {
+                    "recommendations": [
+                        "ms-python.python",
+                        "ms-python.vscode-pylance",
+                        "bowlerhatllc.vscode-as3mxml",
+                    ]
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return as3
 
     def test_ready_gate_and_stack_detection(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -104,6 +206,82 @@ class InspectEnvironmentTests(unittest.TestCase):
         self.assertTrue(report["source"]["has_as3_sources"])
         self.assertTrue(report["source"]["has_gameface_sources"])
         self.assertTrue(report["source"]["has_stubs"])
+        self.assertEqual(report["ide"]["static_status"], "ready")
+        self.assertTrue(report["ide"]["runtime_editor_check_required"])
+        self.assertEqual(report["ide"]["python"]["static_status"], "ready")
+        python_profile = report["ide"]["python"]["profiles"][0]
+        self.assertEqual(python_profile["source_file_count"], 17017)
+        self.assertTrue(
+            all(
+                root["in_analysis_extra_paths"]
+                and root["in_autocomplete_extra_paths"]
+                for root in python_profile["required_roots"]
+            )
+        )
+
+    def test_as3_editor_and_release_configs_are_checked_separately(self):
+        with tempfile.TemporaryDirectory() as temp:
+            project, source, game = self._fixture(Path(temp))
+            self._add_as3_project(project)
+            report = MODULE.build_report(
+                project,
+                source_path=source,
+                game_dir=game,
+                expected_source_branch="mt-ru",
+            )
+
+        self.assertEqual(report["ide"]["static_status"], "ready")
+        self.assertEqual(report["ide"]["as3"]["static_status"], "ready")
+        config = report["ide"]["as3"]["configs"][0]
+        self.assertEqual(config["targets"], ["SWF"])
+        self.assertEqual(config["target_player"], "17.0")
+        self.assertEqual(config["swf_version"], 17)
+        self.assertTrue(config["main_class_resolves"])
+        self.assertEqual(config["build_config"]["swf_version"], "17")
+
+    def test_strict_ide_fails_on_asconfig_build_mismatch(self):
+        with tempfile.TemporaryDirectory() as temp:
+            project, source, _game = self._fixture(Path(temp))
+            as3 = self._add_as3_project(project)
+            asconfig = json.loads((as3 / "asconfig.json").read_text(encoding="utf-8"))
+            asconfig["compilerOptions"]["swf-version"] = 18
+            (as3 / "asconfig.json").write_text(
+                json.dumps(asconfig) + "\n", encoding="utf-8"
+            )
+
+            report = MODULE.build_report(
+                project,
+                source_path=source,
+                target_version="v.1.44.0.0 #2254",
+                expected_source_branch="mt-ru",
+            )
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT_PATH),
+                    str(project),
+                    "--source",
+                    str(source),
+                    "--target-version",
+                    "v.1.44.0.0 #2254",
+                    "--expected-source-branch",
+                    "mt-ru",
+                    "--strict-ide",
+                    "--compact",
+                ],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+
+        self.assertEqual(report["gate"]["status"], "ready")
+        self.assertEqual(report["ide"]["as3"]["static_status"], "warning")
+        self.assertIn(
+            "swf-version differs between asconfig.json and build-config.xml",
+            report["ide"]["as3"]["configs"][0]["warnings"],
+        )
+        self.assertEqual(completed.returncode, 3)
 
     def test_older_source_version_warns_but_does_not_block(self):
         with tempfile.TemporaryDirectory() as temp:

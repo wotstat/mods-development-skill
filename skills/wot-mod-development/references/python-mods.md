@@ -21,11 +21,54 @@
 wot-src/sources/res/scripts/client
 wot-src/sources/res/scripts/common
 wot-src/sources/res/scripts/client_common
+wot-src/stubs
 ```
 
 Документация описывает auto-load файлов `res/scripts/client/gui/mods/mod_*.py`, но перед созданием entry подтвердите loader и lifecycle в доступных исходниках. Если source относится к другому патчу, сообщите это и перепроверьте контракт через runtime. Не предполагайте, что loader вызывает `init()` одинаково в двух продуктах.
 
 Держите entry тонким. Namespaced package рядом с ним снижает конфликты файлов между модами. Уникальные mod id, Python package, log prefix, settings linkage и event names должны согласовываться.
+
+## VS Code и Pylance
+
+Для greenfield-проекта подключите к Pylance собственный source root и все корни целевого snapshot. Типовой список выглядит так:
+
+```json
+{
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/res/scripts/client",
+    "${workspaceFolder}/wot-src/sources/res/scripts/client",
+    "${workspaceFolder}/wot-src/sources/res/scripts/common",
+    "${workspaceFolder}/wot-src/sources/res/scripts/client_common",
+    "${workspaceFolder}/wot-src/stubs"
+  ],
+  "python.autoComplete.extraPaths": [
+    "${workspaceFolder}/res/scripts/client",
+    "${workspaceFolder}/wot-src/sources/res/scripts/client",
+    "${workspaceFolder}/wot-src/sources/res/scripts/common",
+    "${workspaceFolder}/wot-src/sources/res/scripts/client_common",
+    "${workspaceFolder}/wot-src/stubs"
+  ],
+  "python.analysis.indexing": true,
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.userFileIndexingLimit": 20000
+}
+```
+
+`python.analysis.extraPaths` — основной search path Pylance; зеркальный `python.autoComplete.extraPaths` сохраняет ожидаемое поведение Python extension и соответствует текущей инструкции WotStat. Не копируйте пример механически: скорректируйте пути и `userFileIndexingLimit` по `counts.sources` в `.publication.json`. Значение `-1` индексирует все пользовательские файлы, но может заметно увеличить расход памяти.
+
+Если `wot-src` лежит вне workspace, используйте переносимый `.code-workspace`, переменную проекта или локальную настройку вместо коммита абсолютного пути конкретного пользователя. Убедитесь, что каждый указанный каталог существует.
+
+Не подключайте одновременно одноимённые модули двух продуктов в один Pylance profile: `BigWorld`, `gui` и другие imports станут неоднозначными, а diagnostics будут отражать случайный порядок путей. Для universal-мода предпочтительны отдельные MT/WoT workspace-профили. Если это невозможно, документируйте единственный активный target и порядок paths; второй продукт проверяйте отдельным переключением профиля.
+
+После индексации откройте representative runtime-файл и проверьте как минимум:
+
+- import собственного namespaced package;
+- игровой symbol из `client`, `common` или `client_common`;
+- нативный symbol из `stubs`, например `BigWorld`;
+- hover, completion и переход к определению для этих трёх классов imports;
+- отсутствие массовых missing-import diagnostics в Problems и ошибок Pylance в Output.
+
+Успешная сборка мода не заменяет эту проверку: build script и Pylance используют разные search paths.
 
 ## Работа с игровым API
 

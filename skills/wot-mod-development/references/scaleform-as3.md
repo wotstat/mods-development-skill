@@ -17,6 +17,42 @@ WotStat сейчас описывает JDK 11+, AIR SDK Manager и Apache Royal
 
 SWC и декомпилированный AS3 относятся к конкретному продукту/патчу. Не используйте SWC от «Мир танков» как доказательство WoT-совместимости. Не коммитьте и не публикуйте извлечённые game libraries без подтверждённого права.
 
+## `asconfig.json` и готовность IDE
+
+Разделяйте два независимых контура:
+
+- ActionScript & MXML extension, Quick Compile и `asconfigc` читают `asconfig.json`;
+- release-сборка проекта может читать `build-config.xml` или другой build config.
+
+Прохождение одного контура не подтверждает второй. Для нового Apache Royale/SWF target явно задайте в `asconfig.json`:
+
+```jsonc
+{
+  "config": "royale",
+  "compilerOptions": {
+    "targets": ["SWF"],
+    "target-player": "17.0", // пример: подставьте проверенную версию
+    "swf-version": 17,       // пример: подставьте совместимый номер
+    "source-path": ["src"],
+    "external-library-path": ["libs/...", "libs/playerglobal.swc"],
+    "output": "bin/example.swf"
+  },
+  "mainClass": "author.mod.Example"
+}
+```
+
+`mainClass` должен быть полным class name, реально разрешаемым через `source-path`; не оставляйте шаблонный `Main`, если такого класса нет. Каждый source/library path должен существовать. `target-player` должен соответствовать доступному каталогу `playerglobal` в SDK либо явно подключённому совместимому `playerglobal.swc`; `swf-version` берите из проверенной конфигурации целевого клиента/toolchain, а не угадывайте. Значения в `asconfig.json` и release config должны совпадать.
+
+Для нескольких SWF создавайте явный config/task на каждый entry и output. Не заставляйте существующий AIR/Flex/Animate-проект переходить на Royale только ради унификации: сохраните доказанную toolchain и проверьте её собственную конфигурацию.
+
+IDE gate для AS3 пройден, когда:
+
+1. `asconfig.json` проходит schema validation;
+2. editor разрешает `flash.*`, игровые `net.wg.*` и собственный package на representative-файле;
+3. `asconfigc` или VS Code Quick Compile собирает target без missing SDK/library/mainClass errors;
+4. Problems и ActionScript language-server Output проверены после перезапуска/индексации;
+5. отдельно проходит release-сборка, а её `target-player`, `swf-version`, libraries, entry и output согласованы с editor config.
+
 ## Layout и граница Python/AS3
 
 Обычно AS3 source, libs и build output живут вне `res`, а готовый `.swf` попадает в runtime `res/gui/flash`. Поддерживайте один явный controller boundary:

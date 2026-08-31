@@ -84,6 +84,8 @@ python3 <skill-directory>/scripts/inspect_environment.py /path/to/mod \
   --expected-source-branch mt-ru
 ```
 
+Помимо source gate инспектор статически проверяет VS Code/Pylance paths, stubs, рекомендации расширений и `asconfig.json`. Флаг `--strict-ide` возвращает exit code `3`, если IDE-конфигурация неполна. Это не заменяет живую проверку Problems/Output, hover, completion и AS3 Quick Compile в редакторе.
+
 Актуальный источник можно получить так:
 
 ```bash
@@ -97,7 +99,7 @@ git -C wot-src switch mt-ru  # либо wot-eu, wot-na, wot-asia и т. д.
 
 - [`skills/wot-mod-development/SKILL.md`](skills/wot-mod-development/SKILL.md) — основные правила и маршрутизация;
 - [`skills/wot-mod-development/references/`](skills/wot-mod-development/references/) — руководства для greenfield, существующих проектов, Python, Scaleform/AS3, Gameface и runtime-проверки;
-- [`skills/wot-mod-development/scripts/inspect_environment.py`](skills/wot-mod-development/scripts/inspect_environment.py) — безопасная проверка проекта, исходников и клиента;
+- [`skills/wot-mod-development/scripts/inspect_environment.py`](skills/wot-mod-development/scripts/inspect_environment.py) — безопасная проверка проекта, исходников, клиента и статической IDE-конфигурации;
 - [`skills/wot-mod-development/agents/openai.yaml`](skills/wot-mod-development/agents/openai.yaml) — необязательная UI-метадата Codex, не влияющая на другие агенты;
 - [`tests/`](tests/) — тесты инспектора.
 
