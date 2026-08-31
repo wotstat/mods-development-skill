@@ -32,7 +32,7 @@ SWC и декомпилированный AS3 относятся к конкре
 AS3 compiler failure должен останавливать общую сборку. Перед компиляцией очищайте только выделенный output-каталог. Проверяйте, что:
 
 - каждый заявленный SWF действительно создан;
-- в `.mtmod` находится ожидаемый `res/gui/flash/<name>.swf`;
+- в `.wotmod`/`.mtmod` находится ожидаемый `res/gui/flash/<name>.swf`;
 - package/class names соответствуют linkage;
 - debug artifacts и SWC не попали в пакет.
 

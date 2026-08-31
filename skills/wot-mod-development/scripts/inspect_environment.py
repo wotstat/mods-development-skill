@@ -25,6 +25,18 @@ SOURCE_ROOTS = (
     "sources/res/scripts/common",
     "sources/res/scripts/client_common",
 )
+PUBLICATION_FIELDS = (
+    "schema_version",
+    "snapshot_contract_version",
+    "branch",
+    "target",
+    "publisher",
+    "client_type",
+    "version_name",
+    "commit_subject",
+    "snapshot_created_at",
+    "snapshot_id",
+)
 PRUNED_DIRS = {
     ".git",
     ".hg",
@@ -63,6 +75,19 @@ def parse_version(text: Optional[str]) -> Optional[Dict[str, Optional[str]]]:
         "build": match.group(2),
         "matched": match.group(0).strip(),
     }
+
+
+def _read_publication(path: Path) -> Optional[Dict[str, Any]]:
+    raw = _read_text(path)
+    if raw is None:
+        return None
+    try:
+        value = json.loads(raw)
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(value, dict):
+        return None
+    return {key: value[key] for key in PUBLICATION_FIELDS if key in value}
 
 
 def _run_git(path: Path, args: Sequence[str]) -> Optional[str]:
@@ -124,14 +149,25 @@ def inspect_source(source_path: Path) -> Dict[str, Any]:
     result["required_roots"] = roots
     result["layout_valid"] = all(roots.values())
     result["has_as3_sources"] = (source_path / "sources-as3").is_dir()
+    result["has_gameface_sources"] = (source_path / "sources-gameface").is_dir()
+    result["has_stubs"] = (source_path / "stubs").is_dir()
 
     version_name_text = _read_text(source_path / ".version_name")
     result["version_name"] = (
         version_name_text.strip() if version_name_text is not None else None
     )
+    result["publication"] = _read_publication(source_path / ".publication.json")
     result["git"] = _git_identity(source_path)
-    result["commit_version"] = parse_version(
-        result["git"].get("commit_subject") if result["git"] else None
+    git_subject = result["git"].get("commit_subject") if result["git"] else None
+    publication_subject = (
+        result["publication"].get("commit_subject")
+        if result["publication"]
+        else None
+    )
+    if not isinstance(publication_subject, str):
+        publication_subject = None
+    result["commit_version"] = parse_version(git_subject) or parse_version(
+        publication_subject
     )
     return result
 
@@ -299,6 +335,11 @@ def _branch_matches(expected: str, source: Dict[str, Any]) -> bool:
     candidates = set(git.get("containing_refs") or [])
     if git.get("branch"):
         candidates.add(git["branch"])
+    publication = source.get("publication") or {}
+    for key in ("branch", "target"):
+        value = publication.get(key)
+        if isinstance(value, str) and value:
+            candidates.add(value)
     for candidate in candidates:
         normalized = (
             candidate[len("remotes/") :]
@@ -442,7 +483,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--expected-source-branch",
-        help="Expected wot-src branch for the product/region",
+        help=(
+            "Expected wotstat/wot-src data branch for the product/region "
+            "(for example mt-ru or wot-eu)"
+        ),
     )
     parser.add_argument(
         "--compact", action="store_true", help="Emit compact JSON"

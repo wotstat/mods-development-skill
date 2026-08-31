@@ -50,10 +50,10 @@ npx skills add wotstat/mods-development-skill \
 Скилл заставляет агента сначала установить технический контекст, а уже потом писать код:
 
 - определить целевую игру: World of Tanks, «Мир танков» или обе;
-- потребовать подходящий checkout `wot-src` и проверять реальные игровые символы по исходникам;
+- потребовать подходящую data-ветку [`wotstat/wot-src`](https://github.com/wotstat/wot-src) и проверять реальные игровые символы по исходникам;
 - не выдумывать клиентские API, события, импорты и точки хуков;
 - различать Python-only, Scaleform/AS3, Gameface/Unbound и resource-only моды;
-- учитывать Python 2.7, структуру `.mtmod`, сборочные инструменты и ограничения конкретного UI-стека;
+- учитывать Python 2.7, структуру `.wotmod`/`.mtmod`, сборочные инструменты и ограничения конкретного UI-стека;
 - проверять результат по ступеням: статические проверки, сборка, содержимое пакета, загрузка в клиент и ошибки в логах.
 
 Отсутствие пригодных исходников игры блокирует реализацию кода, связанного с API клиента. Расхождение версии или билда исходников с клиентом не является автоматическим блокером: агент должен предупредить о нём, понизить уверенность и усилить runtime-проверку.
@@ -61,7 +61,7 @@ npx skills add wotstat/mods-development-skill \
 ## Что подготовить перед работой
 
 - проект мода или описание идеи;
-- checkout `wot-src` для каждой целевой игры;
+- checkout подходящей data-ветки `wot-src` для каждой целевой игры;
 - путь к установленному клиенту;
 - версию и номер билда клиента, если они известны;
 - необходимые компиляторы и сборочные инструменты.
@@ -71,8 +71,18 @@ npx skills add wotstat/mods-development-skill \
 ```bash
 python3 <skill-directory>/scripts/inspect_environment.py /path/to/mod \
   --source /path/to/wot-src \
-  --game-dir /path/to/game
+  --game-dir /path/to/game \
+  --expected-source-branch mt-ru
 ```
+
+Актуальный источник можно получить так:
+
+```bash
+git clone --depth 1 --no-single-branch https://github.com/wotstat/wot-src.git
+git -C wot-src switch mt-ru  # либо wot-eu, wot-na, wot-asia и т. д.
+```
+
+`main` в `wot-src` содержит publisher-код, а не исходники клиента. Конкретную data-ветку выбирают по продукту и региону; полный список приведён в README самого репозитория.
 
 ## Структура репозитория
 
@@ -85,7 +95,8 @@ python3 <skill-directory>/scripts/inspect_environment.py /path/to/mod \
 ## Полезные ссылки
 
 - [Документация по разработке модов](https://docs.wotstat.info/)
-- [Fuflo WoT REPL](https://github.com/Newmcpe/fuflo-wot-repl) — MCP REPL для диагностических команд в запущенном клиенте и чтения логов
+- [WotStat `wot-src`](https://github.com/wotstat/wot-src) — автоматически обновляемые data-ветки исходников и текстовых данных клиентов
+- [WotStat REPL](https://github.com/wotstat/wotstat-repl) — desktop IDE, live Python 2.7 REPL и MCP для запуска клиента, логов, скриншотов и управляемых UI-проверок
 - [Спецификация Agent Skills](https://agentskills.io/specification)
 - [Установка через `skills` CLI](https://github.com/vercel-labs/skills)
 - [Скиллы в Claude Code](https://code.claude.com/docs/en/skills)

@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import subprocess
 import sys
 import tempfile
@@ -45,9 +46,28 @@ class InspectEnvironmentTests(unittest.TestCase):
 
         for relative in MODULE.SOURCE_ROOTS:
             (source / relative).mkdir(parents=True, exist_ok=True)
+        for relative in ("sources-as3", "sources-gameface", "stubs"):
+            (source / relative).mkdir(parents=True, exist_ok=True)
         (source / ".version_name").write_text("1.44.0.7794\n", encoding="utf-8")
 
-        self._run(["git", "init", "-b", "RU"], source)
+        (source / ".publication.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "snapshot_contract_version": "1.1.0",
+                    "branch": "mt-ru",
+                    "target": "mt-ru",
+                    "publisher": "lesta",
+                    "version_name": "1.44.0.7794",
+                    "commit_subject": "v.1.44.0.0 #2254",
+                    "snapshot_created_at": "2026-08-01T00:00:00Z",
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        self._run(["git", "init", "-b", "mt-ru"], source)
         self._run(["git", "config", "user.email", "test@example.invalid"], source)
         self._run(["git", "config", "user.name", "Skill Test"], source)
         self._run(["git", "add", "."], source)
@@ -67,7 +87,7 @@ class InspectEnvironmentTests(unittest.TestCase):
                 project,
                 source_path=source,
                 game_dir=game,
-                expected_source_branch="RU",
+                expected_source_branch="mt-ru",
             )
 
         self.assertEqual(report["gate"]["status"], "ready")
@@ -78,7 +98,12 @@ class InspectEnvironmentTests(unittest.TestCase):
         self.assertEqual(report["project"]["mode"], "existing")
         self.assertIn("python", report["project"]["ui_stack_hints"])
         self.assertIn("gameface-or-unbound", report["project"]["ui_stack_hints"])
-        self.assertEqual(report["source"]["git"]["branch"], "RU")
+        self.assertEqual(report["source"]["git"]["branch"], "mt-ru")
+        self.assertEqual(report["source"]["publication"]["target"], "mt-ru")
+        self.assertEqual(report["source"]["publication"]["publisher"], "lesta")
+        self.assertTrue(report["source"]["has_as3_sources"])
+        self.assertTrue(report["source"]["has_gameface_sources"])
+        self.assertTrue(report["source"]["has_stubs"])
 
     def test_older_source_version_warns_but_does_not_block(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -87,7 +112,7 @@ class InspectEnvironmentTests(unittest.TestCase):
                 project,
                 source_path=source,
                 target_version="v.2.0.0.0 #3000",
-                expected_source_branch="RU",
+                expected_source_branch="mt-ru",
             )
             completed = subprocess.run(
                 [
@@ -99,7 +124,7 @@ class InspectEnvironmentTests(unittest.TestCase):
                     "--target-version",
                     "v.2.0.0.0 #3000",
                     "--expected-source-branch",
-                    "RU",
+                    "mt-ru",
                     "--strict",
                     "--compact",
                 ],
@@ -132,11 +157,47 @@ class InspectEnvironmentTests(unittest.TestCase):
                 project,
                 source_path=source,
                 target_version="v.1.44.0.0 #2254",
-                expected_source_branch="RU",
+                expected_source_branch="mt-ru",
             )
 
         self.assertEqual(report["gate"]["status"], "warning")
         self.assertEqual(report["gate"]["blockers"], [])
+        self.assertIn(
+            "wot-src git identity is unavailable",
+            report["gate"]["warnings"],
+        )
+
+    def test_publication_manifest_identifies_detached_data_snapshot(self):
+        with tempfile.TemporaryDirectory() as temp:
+            project = Path(temp) / "mod-project"
+            source = project / "wot-src"
+            for relative in MODULE.SOURCE_ROOTS:
+                (source / relative).mkdir(parents=True, exist_ok=True)
+            (source / ".publication.json").write_text(
+                json.dumps(
+                    {
+                        "branch": "wot-eu",
+                        "target": "wot-eu",
+                        "publisher": "wargaming",
+                        "commit_subject": "2.3.1.3 #926",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            report = MODULE.build_report(
+                project,
+                source_path=source,
+                target_version="2.3.1.3 #926",
+                expected_source_branch="wot-eu",
+            )
+
+        self.assertEqual(report["gate"]["status"], "warning")
+        self.assertEqual(report["gate"]["version_alignment"], "exact")
+        self.assertNotIn(
+            "source commit is not contained in the expected branch",
+            report["gate"]["warnings"],
+        )
         self.assertIn(
             "wot-src git identity is unavailable",
             report["gate"]["warnings"],
@@ -149,7 +210,7 @@ class InspectEnvironmentTests(unittest.TestCase):
             report = MODULE.build_report(
                 project,
                 target_version="v.1.44.0.0 #2254",
-                expected_source_branch="RU",
+                expected_source_branch="mt-ru",
             )
 
         self.assertEqual(report["project"]["mode"], "greenfield")

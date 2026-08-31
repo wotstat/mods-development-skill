@@ -4,7 +4,7 @@
 
 ## Сначала классификация
 
-Окна Wulf могут быть реализованы через Gameface, Unbound или Scaleform. HTML в ресурсах ещё не доказывает, что нужный экран — GF. Найдите конкретный layout/resource id, Python view/window class и игровой аналог в исходниках.
+Окна Wulf могут быть реализованы через Gameface, Unbound или Scaleform. HTML в ресурсах ещё не доказывает, что нужный экран — GF. В snapshot `wotstat/wot-src` ищите игровые layouts/assets в `sources-gameface/`, Python view/window — в `sources/`, а нативные контракты — в `stubs/`; затем найдите конкретный resource id и игровой аналог.
 
 Gameface похож на браузер, но им не является: версия engine и Web APIs ограничена клиентом. Не выбирайте framework, syntax target или browser API только потому, что это работает в современном Chrome.
 
