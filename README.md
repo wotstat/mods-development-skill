@@ -84,7 +84,7 @@ python3 <skill-directory>/scripts/inspect_environment.py /path/to/mod \
   --expected-source-branch mt-ru
 ```
 
-Помимо source gate инспектор статически проверяет VS Code/Pylance paths, stubs, рекомендации расширений и `asconfig.json`. Флаг `--strict-ide` возвращает exit code `3`, если IDE-конфигурация неполна. Это не заменяет живую проверку Problems/Output, hover, completion и AS3 Quick Compile в редакторе.
+Помимо source gate инспектор статически проверяет VS Code/Pylance paths, stubs, рекомендации расширений и `asconfig.json`, а также ищет `.pyc`, `.pyo` и `__pycache__`, попавшие в runtime source tree. Флаг `--strict-ide` возвращает exit code `3`, если IDE-конфигурация неполна; `--strict-build-hygiene` возвращает `4` при загрязнении Python-исходников результатами компиляции. Это не заменяет живую проверку Problems/Output, hover, completion и AS3 Quick Compile в редакторе.
 
 Актуальный источник можно получить так:
 

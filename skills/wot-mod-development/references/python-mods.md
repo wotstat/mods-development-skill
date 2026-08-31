@@ -13,6 +13,8 @@
 
 Не считайте успешный Python 3 lint доказательством Python 2 совместимости. Компилируйте тем же Python 2.7, который использует pipeline.
 
+Python 2 `py_compile`/`compileall` обычно записывает `.pyc` рядом с исходником. Никогда не направляйте такую компиляцию на author-owned `res/scripts/...`: компилируйте предварительно скопированное staging tree либо передавайте явный `cfile` внутри staging. Не используйте последующее удаление `.pyc` как замену изоляции; source tree должен оставаться неизменным и после успешной, и после упавшей сборки.
+
 ## Source roots и entry
 
 Обычно полезны:
@@ -89,7 +91,7 @@ Dependency injection, app loader, Wulf/Scaleform factories и другие frame
 
 Полезная лестница:
 
-1. Python 2 `compileall` или явная компиляция runtime files;
+1. Python 2 `compileall` staged-копии или явная компиляция runtime files в staging;
 2. unit-тесты чистой логики;
 3. package inventory;
 4. import/load marker в клиенте;

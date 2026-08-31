@@ -52,6 +52,7 @@ PRUNED_DIRS = {
     "wot-src",
 }
 MAX_SCANNED_FILES = 50000
+MAX_BUILD_ARTIFACTS = 1000
 PYLANCE_DEFAULT_INDEX_LIMIT = 2000
 PYTHON_EXTENSION_IDS = ("ms-python.python", "ms-python.vscode-pylance")
 AS3_EXTENSION_ID = "bowlerhatllc.vscode-as3mxml"
@@ -345,6 +346,69 @@ def _walk_project(root: Path) -> Tuple[List[str], bool]:
                 truncated = True
                 return files, truncated
     return files, truncated
+
+
+def inspect_build_hygiene(project_root: Path) -> Dict[str, Any]:
+    """Find Python compiler output that leaked into runtime source roots."""
+
+    project_root = project_root.expanduser().resolve()
+    candidate_roots = (project_root / "res" / "scripts",)
+    source_roots = [path for path in candidate_roots if path.is_dir()]
+    artifacts: List[str] = []
+    truncated = False
+
+    for source_root in source_roots:
+        for current, dirs, names in os.walk(str(source_root)):
+            cache_dirs = [
+                directory for directory in dirs if directory.lower() == "__pycache__"
+            ]
+            for directory in cache_dirs:
+                cache_path = Path(current) / directory
+                artifacts.append(
+                    cache_path.relative_to(project_root).as_posix() + "/"
+                )
+                dirs.remove(directory)
+                if len(artifacts) >= MAX_BUILD_ARTIFACTS:
+                    truncated = True
+                    break
+            if truncated:
+                break
+            for name in names:
+                if Path(name).suffix.lower() not in {".pyc", ".pyo"}:
+                    continue
+                artifact = Path(current) / name
+                artifacts.append(artifact.relative_to(project_root).as_posix())
+                if len(artifacts) >= MAX_BUILD_ARTIFACTS:
+                    truncated = True
+                    break
+            if truncated:
+                break
+        if truncated:
+            break
+
+    artifacts = sorted(set(artifacts))
+    applicable = bool(source_roots)
+    warnings: List[str] = []
+    if artifacts:
+        warnings.append(
+            "compiled Python artifacts are present under runtime source roots"
+        )
+    if truncated:
+        warnings.append("build artifact scan was truncated")
+    return {
+        "applicable": applicable,
+        "status": (
+            "not-applicable"
+            if not applicable
+            else "warning"
+            if warnings
+            else "ready"
+        ),
+        "runtime_source_roots": [str(path) for path in source_roots],
+        "python_artifacts": artifacts,
+        "scan_truncated": truncated,
+        "warnings": warnings,
+    }
 
 
 def inspect_project(project_root: Path) -> Dict[str, Any]:
@@ -1256,6 +1320,7 @@ def build_report(
     game = inspect_game(game_dir)
     gate = evaluate_gate(source, game, target_version, expected_source_branch)
     ide = inspect_ide(project_root, project, source)
+    build_hygiene = inspect_build_hygiene(project_root)
     return {
         "schema_version": 1,
         "project": project,
@@ -1263,6 +1328,7 @@ def build_report(
         "game": game,
         "gate": gate,
         "ide": ide,
+        "build_hygiene": build_hygiene,
     }
 
 
@@ -1301,6 +1367,14 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Exit with status 3 when static VS Code/asconfig checks warn",
     )
+    parser.add_argument(
+        "--strict-build-hygiene",
+        action="store_true",
+        help=(
+            "Exit with status 4 when Python compiler artifacts are present "
+            "under runtime source roots"
+        ),
+    )
     return parser
 
 
@@ -1321,6 +1395,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 2
     if args.strict_ide and report["ide"]["static_status"] == "warning":
         return 3
+    if (
+        args.strict_build_hygiene
+        and report["build_hygiene"]["status"] == "warning"
+    ):
+        return 4
     return 0
 
 

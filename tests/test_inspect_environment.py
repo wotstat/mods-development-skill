@@ -209,6 +209,8 @@ class InspectEnvironmentTests(unittest.TestCase):
         self.assertEqual(report["ide"]["static_status"], "ready")
         self.assertTrue(report["ide"]["runtime_editor_check_required"])
         self.assertEqual(report["ide"]["python"]["static_status"], "ready")
+        self.assertEqual(report["build_hygiene"]["status"], "ready")
+        self.assertEqual(report["build_hygiene"]["python_artifacts"], [])
         python_profile = report["ide"]["python"]["profiles"][0]
         self.assertEqual(python_profile["source_file_count"], 17017)
         self.assertTrue(
@@ -282,6 +284,52 @@ class InspectEnvironmentTests(unittest.TestCase):
             report["ide"]["as3"]["configs"][0]["warnings"],
         )
         self.assertEqual(completed.returncode, 3)
+
+    def test_build_hygiene_reports_compiler_artifacts_in_runtime_sources(self):
+        with tempfile.TemporaryDirectory() as temp:
+            project, source, _game = self._fixture(Path(temp))
+            runtime_root = project / "res/scripts/client/gui/mods"
+            (runtime_root / "mod_example.pyc").write_bytes(b"compiled")
+            cache_dir = runtime_root / "__pycache__"
+            cache_dir.mkdir()
+            (cache_dir / "mod_example.cpython-314.pyc").write_bytes(b"compiled")
+
+            report = MODULE.build_report(
+                project,
+                source_path=source,
+                target_version="v.1.44.0.0 #2254",
+                expected_source_branch="mt-ru",
+            )
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT_PATH),
+                    str(project),
+                    "--source",
+                    str(source),
+                    "--target-version",
+                    "v.1.44.0.0 #2254",
+                    "--expected-source-branch",
+                    "mt-ru",
+                    "--strict-build-hygiene",
+                    "--compact",
+                ],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+
+        self.assertEqual(report["gate"]["status"], "ready")
+        self.assertEqual(report["build_hygiene"]["status"], "warning")
+        self.assertEqual(
+            report["build_hygiene"]["python_artifacts"],
+            [
+                "res/scripts/client/gui/mods/__pycache__/",
+                "res/scripts/client/gui/mods/mod_example.pyc",
+            ],
+        )
+        self.assertEqual(completed.returncode, 4)
 
     def test_older_source_version_warns_but_does_not_block(self):
         with tempfile.TemporaryDirectory() as temp:
