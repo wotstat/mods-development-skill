@@ -64,7 +64,7 @@ author_mod_name/
 
 ## Сборка и pipeline
 
-Ориентир по базовой упаковке: <https://docs.wotstat.info/guide/first-steps/environment/python/>. Для CI: <https://docs.wotstat.info/guide/first-steps/automatization/>.
+Ориентир по базовой упаковке: <https://docs.wotstat.info/guide/first-steps/environment/python/index.md>. Для CI: <https://docs.wotstat.info/guide/first-steps/automatization/index.md>.
 
 Сборка должна:
 

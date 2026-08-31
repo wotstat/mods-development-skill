@@ -1,6 +1,6 @@
 # Python-моды
 
-Читайте для любого code-мода. Актуальный вводный материал: <https://docs.wotstat.info/guide/first-steps/environment/python/>.
+Читайте для любого code-мода. Актуальный вводный материал: <https://docs.wotstat.info/guide/first-steps/environment/python/index.md>.
 
 ## Runtime и язык
 

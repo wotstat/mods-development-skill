@@ -1,6 +1,6 @@
 # Gameface и Unbound/Wulf UI
 
-Читайте для HTML/CSS/JavaScript, `res_map`, Coherent Gameface, GF view, Unbound или нового Wulf UI. Теория: <https://docs.wotstat.info/guide/scripting/gameface-theory/>. DevTools: <https://docs.wotstat.info/guide/first-steps/devtools/>.
+Читайте для HTML/CSS/JavaScript, `res_map`, Coherent Gameface, GF view, Unbound или нового Wulf UI. Теория: <https://docs.wotstat.info/guide/scripting/gameface-theory/index.md>. DevTools: <https://docs.wotstat.info/guide/first-steps/devtools/index.md>.
 
 ## Сначала классификация
 

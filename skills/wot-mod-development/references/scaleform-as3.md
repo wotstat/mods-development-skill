@@ -1,6 +1,6 @@
 # Scaleform / Flash / AS3
 
-Читайте только когда проект использует `.as`, `.swf`, Scaleform или `as3/`. Базовая настройка: <https://docs.wotstat.info/guide/first-steps/environment/as3/>. Теория: <https://docs.wotstat.info/guide/scripting/as3-theory/>.
+Читайте только когда проект использует `.as`, `.swf`, Scaleform или `as3/`. Базовая настройка: <https://docs.wotstat.info/guide/first-steps/environment/as3/index.md>. Теория: <https://docs.wotstat.info/guide/scripting/as3-theory/index.md>.
 
 ## Toolchain gate
 
